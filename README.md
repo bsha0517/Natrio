@@ -12,13 +12,13 @@ Full-featured wholesale management app with Supabase database backend.
 4. Go to **SQL Editor** → paste this and click **Run:**
 
 ```sql
-create table if not exists inventory       (id bigint primary key, data jsonb not null);
-create table if not exists customers       (id bigint primary key, data jsonb not null);
-create table if not exists sales           (id bigint primary key, data jsonb not null);
-create table if not exists expenses        (id bigint primary key, data jsonb not null);
-create table if not exists deliveries      (id bigint primary key, data jsonb not null);
-create table if not exists purchase_orders (id bigint primary key, data jsonb not null);
-create table if not exists audit_log       (id bigint primary key, data jsonb not null);
+create table if not exists inventory       (id text primary key, data jsonb not null);
+create table if not exists customers       (id text primary key, data jsonb not null);
+create table if not exists sales           (id text primary key, data jsonb not null);
+create table if not exists expenses        (id text primary key, data jsonb not null);
+create table if not exists deliveries      (id text primary key, data jsonb not null);
+create table if not exists purchase_orders (id text primary key, data jsonb not null);
+create table if not exists audit_log       (id text primary key, data jsonb not null);
 create table if not exists app_settings    (id text    primary key, data jsonb not null);
 create table if not exists quotes          (id text    primary key, data jsonb not null);
 ```

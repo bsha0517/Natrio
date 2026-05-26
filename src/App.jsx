@@ -881,32 +881,78 @@ function PurchaseOrders({pos,setPOs,inventory,setInventory,suppliers,currentUser
 /* ── CRM ── */
 function CRM({customers,setCustomers,sales,currentUser,addAudit}){
   const isMobile=useIsMobile();
-  const [sel,setSel]=useState(null);const [adding,setAdding]=useState(false);const [form,setForm]=useState({});
+  const [sel,setSel]=useState(null);
+  const [adding,setAdding]=useState(false);
+  const [form,setForm]=useState({name:"",email:"",phone:"",address:"",credit:"",tier:"Bronze"});
   const cust=sel?customers.find(c=>c.id===sel):null;
   const cs=cust?sales.filter(s=>s.customerId===cust.id):[];
   const doExport=()=>exportToExcel(customers.map(c=>({Name:c.name,Email:c.email,Phone:c.phone,Tier:c.tier,CreditLimit:c.credit,Balance:c.balance,Orders:c.orders,Since:c.since,Address:c.address||""})),"natrio_customers.xlsx");
   const doImport=file=>importFromExcel(file,rows=>{const mapped=rows.map(r=>({id:uid(),name:r.Name||"",email:r.Email||"",phone:r.Phone||"",tier:r.Tier||"Bronze",credit:+r.CreditLimit||0,balance:+r.Balance||0,orders:+r.Orders||0,since:r.Since||today(),address:r.Address||""}));setCustomers(c=>[...c,...mapped]);addAudit("create","Customer",`Imported ${mapped.length} customers`,currentUser.name);});
-  const add=()=>{if(!form.name)return;const nc={id:uid(),name:form.name,email:form.email||"",phone:form.phone||"",credit:+form.credit||0,balance:0,tier:form.tier||"Bronze",since:today(),orders:0,address:form.address||""};setCustomers(c=>[...c,nc]);addAudit("create","Customer",nc.name,currentUser.name);setAdding(false);setForm({});setSel(nc.id);};
-  const del=id=>{if(!window.confirm("Delete customer?"))return;setCustomers(c=>c.filter(x=>x.id!==id));addAudit("delete","Customer",customers.find(c=>c.id===id)?.name||"",currentUser.name);if(sel===id)setSel(null);};
-  const List=()=>(
-    <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
+  const saveCustomer=()=>{
+    if(!form.name.trim())return;
+    const nc={id:uid(),name:form.name,email:form.email,phone:form.phone,credit:+form.credit||0,balance:0,tier:form.tier,since:today(),orders:0,address:form.address};
+    setCustomers(c=>[...c,nc]);
+    addAudit("create","Customer",nc.name,currentUser.name);
+    setAdding(false);
+    setForm({name:"",email:"",phone:"",address:"",credit:"",tier:"Bronze"});
+    setSel(nc.id);
+  };
+  const del=id=>{
+    if(!window.confirm("Delete customer?"))return;
+    setCustomers(c=>c.filter(x=>x.id!==id));
+    addAudit("delete","Customer",customers.find(c=>c.id===id)?.name||"",currentUser.name);
+    if(sel===id)setSel(null);
+  };
+
+  /* Customer list panel — plain JSX, no inner component */
+  const listPanel=(
+    <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,minWidth:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
         <ImportExportBar exportFn={doExport} importFn={doImport} label="customers"/>
-        <Btn onClick={()=>{setAdding(true);setForm({});setSel(null);}}>+ Add Customer</Btn>
+        <Btn onClick={()=>{setAdding(true);setForm({name:"",email:"",phone:"",address:"",credit:"",tier:"Bronze"});setSel(null);}}>+ Add Customer</Btn>
       </div>
-      {adding&&<Card style={{border:`1px solid ${C.accent}`}}>
-        <div style={{display:"flex",flexDirection:"column",gap:7}}>
-          <Input placeholder="Company Name *" value={form.name||""} onChange={e=>setForm(x=>({...x,name:e.target.value}))}/>
-          <Input placeholder="Email" value={form.email||""} onChange={e=>setForm(x=>({...x,email:e.target.value}))}/>
-          <Input placeholder="Phone" value={form.phone||""} onChange={e=>setForm(x=>({...x,phone:e.target.value}))}/>
-          <Input placeholder="Address" value={form.address||""} onChange={e=>setForm(x=>({...x,address:e.target.value}))}/>
-          <Input placeholder="Credit Limit (PKR)" type="number" value={form.credit||""} onChange={e=>setForm(x=>({...x,credit:e.target.value}))}/>
-          <Sel value={form.tier||"Bronze"} onChange={e=>setForm(x=>({...x,tier:e.target.value}))}>{["Bronze","Silver","Gold","Platinum"].map(t=><option key={t}>{t}</option>)}</Sel>
-          <div style={{display:"flex",gap:7}}><Btn onClick={add} variant="success" style={{flex:1}}>Save</Btn><Btn onClick={()=>setAdding(false)} variant="ghost" style={{flex:1}}>Cancel</Btn></div>
-        </div>
-      </Card>}
+      {adding&&(
+        <Card style={{border:`1px solid ${C.accent}`}}>
+          <div style={{display:"flex",flexDirection:"column",gap:7}}>
+            <Input
+              placeholder="Company Name *"
+              value={form.name}
+              onChange={e=>setForm(f=>({...f,name:e.target.value}))}
+            />
+            <Input
+              placeholder="Email"
+              value={form.email}
+              onChange={e=>setForm(f=>({...f,email:e.target.value}))}
+            />
+            <Input
+              placeholder="Phone"
+              value={form.phone}
+              onChange={e=>setForm(f=>({...f,phone:e.target.value}))}
+            />
+            <Input
+              placeholder="Address"
+              value={form.address}
+              onChange={e=>setForm(f=>({...f,address:e.target.value}))}
+            />
+            <Input
+              placeholder="Credit Limit (PKR)"
+              type="number"
+              value={form.credit}
+              onChange={e=>setForm(f=>({...f,credit:e.target.value}))}
+            />
+            <Sel value={form.tier} onChange={e=>setForm(f=>({...f,tier:e.target.value}))}>
+              {["Bronze","Silver","Gold","Platinum"].map(t=><option key={t}>{t}</option>)}
+            </Sel>
+            <div style={{display:"flex",gap:7}}>
+              <Btn onClick={saveCustomer} variant="success" style={{flex:1}}>Save</Btn>
+              <Btn onClick={()=>setAdding(false)} variant="ghost" style={{flex:1}}>Cancel</Btn>
+            </div>
+          </div>
+        </Card>
+      )}
       {customers.map(c=>(
-        <div key={c.id} onClick={()=>{setSel(c.id);setAdding(false);}} style={{background:sel===c.id?C.accentSoft:C.surface,border:`1px solid ${sel===c.id?C.accent:C.border}`,borderRadius:8,padding:11,cursor:"pointer",transition:"all .12s",boxShadow:"0 1px 3px #0000000a"}}>
+        <div key={c.id} onClick={()=>{setSel(c.id);setAdding(false);}}
+          style={{background:sel===c.id?C.accentSoft:C.surface,border:`1px solid ${sel===c.id?C.accent:C.border}`,borderRadius:8,padding:11,cursor:"pointer",transition:"all .12s",boxShadow:"0 1px 3px #0000000a"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div style={{fontSize:13,fontWeight:700}}>{c.name}</div><Badge label={c.tier}/></div>
           <div style={{fontSize:10,color:C.muted,marginTop:3}}>{c.email}</div>
           <div style={{display:"flex",gap:11,marginTop:6}}>
@@ -917,49 +963,58 @@ function CRM({customers,setCustomers,sales,currentUser,addAudit}){
       ))}
     </div>
   );
-  const Detail=()=>!cust?<div style={{color:C.muted,fontSize:13,textAlign:"center",marginTop:52}}>Select a customer</div>:(
-    <>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-        <div><div style={{fontSize:17,fontWeight:800}}>{cust.name}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>Since {cust.since}</div></div>
-        <div style={{display:"flex",gap:6}}><Badge label={cust.tier}/><Btn onClick={()=>del(cust.id)} variant="danger" style={{fontSize:10,padding:"3px 9px"}}>Delete</Btn></div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:12}}>
-        <StatCard label="Revenue" value={fmt(cs.reduce((a,s)=>a+s.total,0))} color={C.green}/>
-        <StatCard label="Collected" value={fmt(cs.filter(s=>s.status==="Paid").reduce((a,s)=>a+s.total,0))} color={C.accent}/>
-        <StatCard label="Overdue" value={fmt(cs.filter(s=>s.status==="Due").reduce((a,s)=>a+s.total,0))} color={C.red}/>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-        {[["Email",cust.email],["Phone",cust.phone],["Address",cust.address],["Credit Limit",fmt(cust.credit)],["Balance",fmt(cust.balance)],["Credit Used",`${cust.credit?Math.round((cust.balance/cust.credit)*100):0}%`]].map(([l,v])=>(
-          <div key={l} style={{background:C.bg,borderRadius:6,padding:"8px 10px"}}><div style={{fontSize:9,color:C.muted,marginBottom:2,textTransform:"uppercase",letterSpacing:1}}>{l}</div><div style={{fontSize:12,fontWeight:600}}>{v||"—"}</div></div>
-        ))}
-      </div>
-      <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12}}>
-        <div style={{fontSize:9,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Order History</div>
-        {cs.length===0?<div style={{color:C.muted,fontSize:12}}>No orders yet.</div>:cs.map(s=>(
-          <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.border}`}}>
-            <div><span style={{color:C.accent,fontFamily:"'DM Mono',monospace",fontSize:11}}>#{s.id}</span><span style={{color:C.muted,fontSize:11,marginLeft:7}}>{s.date}</span></div>
-            <div style={{display:"flex",alignItems:"center",gap:7}}><span style={{fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:12}}>{fmt(s.total)}</span><Badge label={s.status}/></div>
+
+  /* Customer detail panel — plain JSX */
+  const detailPanel=(
+    <div style={{flex:2,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:18,overflowY:"auto",boxShadow:"0 1px 3px #0000000a"}}>
+      {!cust
+        ?<div style={{color:C.muted,fontSize:13,textAlign:"center",marginTop:52}}>Select a customer</div>
+        :<>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+            <div><div style={{fontSize:17,fontWeight:800}}>{cust.name}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>Since {cust.since}</div></div>
+            <div style={{display:"flex",gap:6}}><Badge label={cust.tier}/><Btn onClick={()=>del(cust.id)} variant="danger" style={{fontSize:10,padding:"3px 9px"}}>Delete</Btn></div>
           </div>
-        ))}
-      </div>
-    </>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:12}}>
+            <StatCard label="Revenue" value={fmt(cs.reduce((a,s)=>a+s.total,0))} color={C.green}/>
+            <StatCard label="Collected" value={fmt(cs.filter(s=>s.status==="Paid").reduce((a,s)=>a+s.total,0))} color={C.accent}/>
+            <StatCard label="Overdue" value={fmt(cs.filter(s=>s.status==="Due").reduce((a,s)=>a+s.total,0))} color={C.red}/>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+            {[["Email",cust.email],["Phone",cust.phone],["Address",cust.address],["Credit Limit",fmt(cust.credit)],["Balance",fmt(cust.balance)],["Credit Used",`${cust.credit?Math.round((cust.balance/cust.credit)*100):0}%`]].map(([l,v])=>(
+              <div key={l} style={{background:C.bg,borderRadius:6,padding:"8px 10px"}}><div style={{fontSize:9,color:C.muted,marginBottom:2,textTransform:"uppercase",letterSpacing:1}}>{l}</div><div style={{fontSize:12,fontWeight:600}}>{v||"—"}</div></div>
+            ))}
+          </div>
+          <div style={{borderTop:`1px solid ${C.border}`,paddingTop:12}}>
+            <div style={{fontSize:9,fontWeight:800,color:C.muted,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Order History</div>
+            {cs.length===0?<div style={{color:C.muted,fontSize:12}}>No orders yet.</div>:cs.map(s=>(
+              <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.border}`}}>
+                <div><span style={{color:C.accent,fontFamily:"'DM Mono',monospace",fontSize:11}}>#{s.id}</span><span style={{color:C.muted,fontSize:11,marginLeft:7}}>{s.date}</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:7}}><span style={{fontFamily:"'DM Mono',monospace",fontWeight:700,fontSize:12}}>{fmt(s.total)}</span><Badge label={s.status}/></div>
+              </div>
+            ))}
+          </div>
+        </>
+      }
+    </div>
   );
+
   if(isMobile){
     return(
       <div style={{display:"flex",flexDirection:"column",gap:11}}>
-        {!sel?<List/>:(
-          <>
+        {!sel
+          ?listPanel
+          :<>
             <Btn onClick={()=>setSel(null)} variant="ghost" style={{alignSelf:"flex-start",fontSize:11}}>← Back to list</Btn>
-            <Card><Detail/></Card>
+            {detailPanel}
           </>
-        )}
+        }
       </div>
     );
   }
   return(
     <div style={{display:"flex",gap:12,height:"calc(100vh - 140px)"}}>
-      <List/>
-      <div style={{flex:2,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:18,overflowY:"auto",boxShadow:"0 1px 3px #0000000a"}}><Detail/></div>
+      {listPanel}
+      {detailPanel}
     </div>
   );
 }
@@ -1440,15 +1495,14 @@ export default function App(){
 
   /* ── Database state ── */
   const [dbLoading,setDbLoading]=useState(isConnected());
-  const [syncStatus,setSyncStatus]=useState("idle"); // idle | syncing | saved | error | offline
+  const [syncStatus,setSyncStatus]=useState("idle");
+  const [syncError,setSyncError]=useState("");
   const initialized=useRef(false);
-  /* Track which IDs are currently in Supabase so we can detect deletions */
   const syncedIds=useRef({inventory:[],customers:[],sales:[],expenses:[],deliveries:[],pos:[],auditLog:[]});
 
   /* ── Load all data from Supabase on first mount ── */
   useEffect(()=>{
     if(!isConnected()){
-      /* No DB configured — use seed data and local audit log */
       setAuditLog(loadAudit());
       initialized.current=true;
       setDbLoading(false);
@@ -1457,24 +1511,71 @@ export default function App(){
     }
     (async()=>{
       setSyncStatus("syncing");
+      /* 1. Test the connection first — shows a clear error if misconfigured */
+      const test=await import("./supabase.js").then(m=>m.testConnection());
+      if(!test.ok){
+        setSyncError(test.error);
+        setSyncStatus("error");
+        setAuditLog(loadAudit());
+        initialized.current=true;
+        setDbLoading(false);
+        return;
+      }
       try{
         const [inv,custs,sls,exps,dels,purchOrds,auditEntries,settingsData]=await Promise.all([
           db.load("inventory"),db.load("customers"),db.load("sales"),
           db.load("expenses"),db.load("deliveries"),db.load("purchase_orders"),
           db.load("audit_log"),db.loadSetting("main_settings"),
         ]);
-        if(inv.length){setInventory(inv);syncedIds.current.inventory=inv.map(i=>i.id);}
-        if(custs.length){setCustomers(custs);syncedIds.current.customers=custs.map(i=>i.id);}
-        if(sls.length){setSales(sls);syncedIds.current.sales=sls.map(i=>i.id);}
-        if(exps.length){setExpenses(exps);syncedIds.current.expenses=exps.map(i=>i.id);}
-        if(dels.length){setDeliveries(dels);syncedIds.current.deliveries=dels.map(i=>i.id);}
-        if(purchOrds.length){setPOs(purchOrds);syncedIds.current.pos=purchOrds.map(i=>i.id);}
-        if(auditEntries.length){setAuditLog(auditEntries);syncedIds.current.auditLog=auditEntries.map(i=>i.id);}
+        /* 2. Always update state (even with seed data) so sync effects fire after init */
+        const isNewDB=!inv.length&&!custs.length&&!sls.length;
+        const finalInv    = inv.length    ? inv    : seedInventory;
+        const finalCusts  = custs.length  ? custs  : seedCustomers;
+        const finalSls    = sls.length    ? sls    : seedSales;
+        const finalExps   = exps.length   ? exps   : seedExpenses;
+        const finalDels   = dels.length   ? dels   : seedDeliveries;
+        const finalPos    = purchOrds.length ? purchOrds : seedPOs;
+        setInventory(finalInv);
+        setCustomers(finalCusts);
+        setSales(finalSls);
+        setExpenses(finalExps);
+        setDeliveries(finalDels);
+        setPOs(finalPos);
+        if(auditEntries.length){setAuditLog(auditEntries);}else{setAuditLog(loadAudit());}
         if(settingsData){setSettings(s=>({...DEFAULT_SETTINGS,...s,...settingsData}));}
+        /* 3. If fresh DB, push seed data up immediately */
+        if(isNewDB){
+          await Promise.all([
+            db.upsertMany("inventory",seedInventory),
+            db.upsertMany("customers",seedCustomers),
+            db.upsertMany("sales",seedSales),
+            db.upsertMany("expenses",seedExpenses),
+            db.upsertMany("deliveries",seedDeliveries),
+            db.upsertMany("purchase_orders",seedPOs),
+          ]);
+          syncedIds.current.inventory=seedInventory.map(i=>String(i.id));
+          syncedIds.current.customers=seedCustomers.map(i=>String(i.id));
+          syncedIds.current.sales=seedSales.map(i=>String(i.id));
+          syncedIds.current.expenses=seedExpenses.map(i=>String(i.id));
+          syncedIds.current.deliveries=seedDeliveries.map(i=>String(i.id));
+          syncedIds.current.pos=seedPOs.map(i=>String(i.id));
+        } else {
+          syncedIds.current.inventory=finalInv.map(i=>String(i.id));
+          syncedIds.current.customers=finalCusts.map(i=>String(i.id));
+          syncedIds.current.sales=finalSls.map(i=>String(i.id));
+          syncedIds.current.expenses=finalExps.map(i=>String(i.id));
+          syncedIds.current.deliveries=finalDels.map(i=>String(i.id));
+          syncedIds.current.pos=finalPos.map(i=>String(i.id));
+          syncedIds.current.auditLog=auditEntries.map(i=>String(i.id));
+        }
         setSyncStatus("saved");
+        setSyncError("");
       }catch(e){
-        console.error("[DB] Initial load failed:",e);
+        console.error("[DB] Load failed:",e);
         setSyncStatus("error");
+        setSyncError(e.message||"Unknown error");
+        setInventory(seedInventory);setCustomers(seedCustomers);setSales(seedSales);
+        setExpenses(seedExpenses);setDeliveries(seedDeliveries);setPOs(seedPOs);
         setAuditLog(loadAudit());
       }
       initialized.current=true;
@@ -1482,21 +1583,49 @@ export default function App(){
     })();
   },[]);
 
-  /* ── Generic sync helper: upsert changed + delete removed ── */
+  /* ── Generic sync: upsert all + delete removed ── */
   const syncCollection=useCallback(async(table,items,refKey)=>{
     if(!isConnected()||!initialized.current)return;
     try{
       setSyncStatus("syncing");
-      const currentIds=new Set(items.map(i=>i.id));
+      const currentIds=new Set(items.map(i=>String(i.id)));
       const deletedIds=syncedIds.current[refKey].filter(id=>!currentIds.has(id));
       await db.upsertMany(table,items);
       if(deletedIds.length)await db.deleteMany(table,deletedIds);
       syncedIds.current[refKey]=[...currentIds];
       setSyncStatus("saved");
-    }catch(e){console.error(`[DB] Sync ${table}:`,e);setSyncStatus("error");}
+      setSyncError("");
+    }catch(e){
+      console.error(`[DB] Sync ${table}:`,e);
+      setSyncStatus("error");
+      setSyncError(e.message||"Sync failed");
+    }
   },[]);
 
-  /* ── Debounced sync effects for each collection (800ms after last change) ── */
+  /* Force manual sync of everything */
+  const forceSync=useCallback(async()=>{
+    if(!isConnected())return;
+    setSyncStatus("syncing");
+    try{
+      await Promise.all([
+        db.upsertMany("inventory",inventory),
+        db.upsertMany("customers",customers),
+        db.upsertMany("sales",sales),
+        db.upsertMany("expenses",expenses),
+        db.upsertMany("deliveries",deliveries),
+        db.upsertMany("purchase_orders",pos),
+      ]);
+      syncedIds.current.inventory=inventory.map(i=>String(i.id));
+      syncedIds.current.customers=customers.map(i=>String(i.id));
+      syncedIds.current.sales=sales.map(i=>String(i.id));
+      syncedIds.current.expenses=expenses.map(i=>String(i.id));
+      syncedIds.current.deliveries=deliveries.map(i=>String(i.id));
+      syncedIds.current.pos=pos.map(i=>String(i.id));
+      setSyncStatus("saved");setSyncError("");
+    }catch(e){setSyncStatus("error");setSyncError(e.message||"Force sync failed");}
+  },[inventory,customers,sales,expenses,deliveries,pos]);
+
+  /* ── Debounced sync on state change ── */
   useEffect(()=>{if(!initialized.current)return;const t=setTimeout(()=>syncCollection("inventory",inventory,"inventory"),800);return()=>clearTimeout(t);},[inventory]);
   useEffect(()=>{if(!initialized.current)return;const t=setTimeout(()=>syncCollection("customers",customers,"customers"),800);return()=>clearTimeout(t);},[customers]);
   useEffect(()=>{if(!initialized.current)return;const t=setTimeout(()=>syncCollection("sales",sales,"sales"),800);return()=>clearTimeout(t);},[sales]);
@@ -1505,27 +1634,22 @@ export default function App(){
   useEffect(()=>{if(!initialized.current)return;const t=setTimeout(()=>syncCollection("purchase_orders",pos,"pos"),800);return()=>clearTimeout(t);},[pos]);
   useEffect(()=>{
     if(!initialized.current)return;
-    const t=setTimeout(()=>{
-      if(isConnected())db.saveSetting("main_settings",settings);
-      else localStorage.setItem("natrio_settings",JSON.stringify(settings));
-    },800);
+    const t=setTimeout(()=>db.saveSetting("main_settings",settings).catch(e=>console.error("[DB] Settings:",e)),800);
     return()=>clearTimeout(t);
   },[settings]);
 
-  /* ── Audit log: append-only sync (just upsert newest entry) ── */
+  /* ── Audit log — append only ── */
   useEffect(()=>{
     if(!initialized.current||!auditLog.length)return;
     const newest=auditLog[0];
     if(isConnected()){
-      db.upsertOne("audit_log",newest);
-      if(!syncedIds.current.auditLog.includes(newest.id))
-        syncedIds.current.auditLog=[newest.id,...syncedIds.current.auditLog];
-    } else {
-      saveAudit(auditLog);
-    }
+      db.upsertOne("audit_log",newest).catch(e=>console.error("[DB] Audit:",e));
+      if(!syncedIds.current.auditLog.includes(String(newest.id)))
+        syncedIds.current.auditLog=[String(newest.id),...syncedIds.current.auditLog];
+    } else { saveAudit(auditLog); }
   },[auditLog]);
 
-  /* ── Session restore on page refresh ── */
+  /* ── Session restore ── */
   useEffect(()=>{const s=sessionStorage.getItem("natrio_user");if(s)setUser(JSON.parse(s));},[]);
 
   const addAudit=useCallback((action,entity,detail,who)=>{
@@ -1637,15 +1761,22 @@ export default function App(){
             {!isMobile&&<div style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"4px 10px",fontSize:10,color:C.muted}}>{inventory.length} products · {customers.length} customers · {sales.length} orders</div>}
             {/* Sync status */}
             {isConnected()&&(
-              <div style={{fontSize:10,fontWeight:600,padding:"4px 9px",borderRadius:6,border:"1px solid",
-                background:syncStatus==="saved"?C.greenSoft:syncStatus==="syncing"?C.accentSoft:syncStatus==="error"?C.redSoft:C.bg,
-                color:syncStatus==="saved"?C.green:syncStatus==="syncing"?C.accent:syncStatus==="error"?C.red:C.muted,
-                borderColor:syncStatus==="saved"?C.green+"44":syncStatus==="syncing"?C.accent+"44":syncStatus==="error"?C.red+"44":C.border,
-                whiteSpace:"nowrap"}}>
-                {syncStatus==="saved"?"✓ Saved":syncStatus==="syncing"?"⟳ Saving…":syncStatus==="error"?"⚠ Sync error":"●"}
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                {syncStatus==="error"&&syncError&&(
+                  <div title={syncError} style={{fontSize:10,color:C.red,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"help"}}>⚠ {syncError.split("\n")[0]}</div>
+                )}
+                <div style={{fontSize:10,fontWeight:600,padding:"4px 9px",borderRadius:6,border:"1px solid",cursor:syncStatus==="error"?"pointer":"default",
+                  background:syncStatus==="saved"?C.greenSoft:syncStatus==="syncing"?C.accentSoft:syncStatus==="error"?C.redSoft:C.bg,
+                  color:syncStatus==="saved"?C.green:syncStatus==="syncing"?C.accent:syncStatus==="error"?C.red:C.muted,
+                  borderColor:syncStatus==="saved"?C.green+"44":syncStatus==="syncing"?C.accent+"44":syncStatus==="error"?C.red+"44":C.border,
+                  whiteSpace:"nowrap"}}
+                  onClick={syncStatus==="error"?forceSync:undefined}
+                  title={syncStatus==="error"?`Error: ${syncError}\n\nClick to retry`:"Database sync status"}>
+                  {syncStatus==="saved"?"✓ Saved":syncStatus==="syncing"?"⟳ Saving…":syncStatus==="error"?"↻ Retry":"●"}
+                </div>
               </div>
             )}
-            {!isConnected()&&<div style={{fontSize:10,color:C.muted,padding:"4px 9px",border:`1px solid ${C.border}`,borderRadius:6}}>⚡ Offline mode</div>}
+            {!isConnected()&&<div style={{fontSize:10,color:C.muted,padding:"4px 9px",border:`1px solid ${C.border}`,borderRadius:6}}>⚡ Offline</div>}
           </div>
         </div>
         <div style={{flex:1,overflow:"auto",padding:active==="ai"?0:isMobile?12:20}} onClick={()=>showNotif&&setShowNotif(false)}>
