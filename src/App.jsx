@@ -287,15 +287,6 @@ function LoginScreen({users,onLogin}){
           {err&&<div style={{background:C.redSoft,border:`1px solid ${C.red}44`,borderRadius:7,padding:"7px 11px",fontSize:12,color:C.red}}>{err}</div>}
           <Btn onClick={go} style={{width:"100%",padding:11,fontSize:13,marginTop:2}}>Sign In</Btn>
         </div>
-        <div style={{marginTop:16,padding:"10px 12px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8}}>
-          <div style={{fontSize:9,color:C.muted,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:5}}>Demo accounts</div>
-          {[["admin","admin123","Admin"],["sales","sales123","Sales"],["viewer","viewer123","Viewer"]].map(([un,pw,r])=>(
-            <div key={un} onClick={()=>{setU(un);setP(pw);setErr("");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",cursor:"pointer",borderBottom:`1px solid ${C.border}`}}>
-              <span style={{fontSize:11,color:C.text,fontFamily:"'DM Mono',monospace"}}>{un} / {pw}</span><Badge label={r}/>
-            </div>
-          ))}
-          <div style={{fontSize:9,color:C.muted,marginTop:5}}>Tap any row to auto-fill</div>
-        </div>
       </div>
     </div>
   );
@@ -642,9 +633,8 @@ function Orders({sales,setSales,customers,settings,currentUser,addAudit,canEdit}
 }
 
 /* ── Quotations ── */
-function Quotations({inventory,customers,setSales,setInventory,settings,currentUser,addAudit}){
+function Quotations({inventory,customers,quotes,setQuotes,setSales,setInventory,settings,currentUser,addAudit}){
   const isMobile=useIsMobile();
-  const [quotes,setQuotes]=useState([{id:"QT-001",date:"2026-05-22",customer:"Acme Industries",customerId:1,items:[{sku:"WHL-001",name:"Industrial Bearing Set",qty:50,price:7800}],total:390000,status:"Sent",validUntil:"2026-06-22",note:"Bulk order"}]);
   const [add,setAdd]=useState(false);const [form,setForm]=useState({customerId:"",validUntil:"",note:""});const [cq,setCq]=useState([]);
   const addItem=item=>setCq(c=>{const ex=c.find(x=>x.sku===item.sku);if(ex)return c.map(x=>x.sku===item.sku?{...x,qty:x.qty+1}:x);return[...c,{...item,qty:1}];});
   const save=()=>{const cust=customers.find(c=>c.id===parseInt(form.customerId));if(!cust||!cq.length)return;const tot=cq.reduce((a,c)=>a+c.qty*c.price,0);const q={id:`QT-${String(quotes.length+1).padStart(3,"0")}`,date:today(),customer:cust.name,customerId:cust.id,items:cq.map(c=>({sku:c.sku,name:c.name,qty:c.qty,price:c.price})),total:tot,status:"Draft",validUntil:form.validUntil,note:form.note};setQuotes(qs=>[q,...qs]);addAudit("create","Quotation",`${q.id} for ${cust.name}`,currentUser.name);setAdd(false);setCq([]);setForm({customerId:"",validUntil:"",note:""});};
@@ -1455,6 +1445,7 @@ export default function App(){
   const [pos,setPOs]=useState([]);
   const [expenses,setExpenses]=useState([]);
   const [deliveries,setDeliveries]=useState([]);
+  const [quotes,setQuotes]=useState([]);
   const [auditLog,setAuditLog]=useState([]);
   const [settings,setSettings]=useState(()=>{try{const s=localStorage.getItem("natrio_settings");return s?{...DEFAULT_SETTINGS,...JSON.parse(s)}:DEFAULT_SETTINGS;}catch{return DEFAULT_SETTINGS;}});
   const [showNotif,setShowNotif]=useState(false);
@@ -1464,7 +1455,7 @@ export default function App(){
   const [syncStatus,setSyncStatus]=useState("idle");
   const [syncError,setSyncError]=useState("");
   const initialized=useRef(false);
-  const syncedIds=useRef({inventory:[],customers:[],sales:[],expenses:[],deliveries:[],pos:[],auditLog:[],users:[]});
+  const syncedIds=useRef({inventory:[],customers:[],sales:[],expenses:[],deliveries:[],pos:[],auditLog:[],users:[],quotes:[]});
 
   /* ── Load all data from Supabase on first mount ── */
   useEffect(()=>{
@@ -1488,10 +1479,10 @@ export default function App(){
         return;
       }
       try{
-        const [inv,custs,sls,exps,dels,purchOrds,auditEntries,dbUsers,settingsData]=await Promise.all([
+        const [inv,custs,sls,exps,dels,purchOrds,auditEntries,dbUsers,dbQuotes,settingsData]=await Promise.all([
           db.load("inventory"),db.load("customers"),db.load("sales"),
           db.load("expenses"),db.load("deliveries"),db.load("purchase_orders"),
-          db.load("audit_log"),db.load("users"),db.loadSetting("main_settings"),
+          db.load("audit_log"),db.load("users"),db.load("quotes"),db.loadSetting("main_settings"),
         ]);
         /* Load whatever is in the DB — no seed data fallbacks */
         setInventory(inv);      syncedIds.current.inventory=inv.map(i=>String(i.id));
@@ -1500,6 +1491,7 @@ export default function App(){
         setExpenses(exps);      syncedIds.current.expenses=exps.map(i=>String(i.id));
         setDeliveries(dels);    syncedIds.current.deliveries=dels.map(i=>String(i.id));
         setPOs(purchOrds);      syncedIds.current.pos=purchOrds.map(i=>String(i.id));
+        setQuotes(dbQuotes);    syncedIds.current.quotes=dbQuotes.map(i=>String(i.id));
         if(dbUsers.length){setUsers(dbUsers);syncedIds.current.users=dbUsers.map(i=>String(i.id));}
         else{
           /* First run — push default admin user to DB */
@@ -1556,6 +1548,7 @@ export default function App(){
         db.upsertMany("deliveries",deliveries),
         db.upsertMany("purchase_orders",pos),
         db.upsertMany("users",users),
+        db.upsertMany("quotes",quotes),
       ]);
       syncedIds.current.inventory=inventory.map(i=>String(i.id));
       syncedIds.current.customers=customers.map(i=>String(i.id));
@@ -1564,6 +1557,7 @@ export default function App(){
       syncedIds.current.deliveries=deliveries.map(i=>String(i.id));
       syncedIds.current.pos=pos.map(i=>String(i.id));
       syncedIds.current.users=users.map(i=>String(i.id));
+      syncedIds.current.quotes=quotes.map(i=>String(i.id));
       setSyncStatus("saved");setSyncError("");
     }catch(e){setSyncStatus("error");setSyncError(e.message||"Force sync failed");}
   },[inventory,customers,sales,expenses,deliveries,pos]);
@@ -1576,6 +1570,7 @@ export default function App(){
   useEffect(()=>{if(!initialized.current)return;const t=setTimeout(()=>syncCollection("deliveries",deliveries,"deliveries"),800);return()=>clearTimeout(t);},[deliveries]);
   useEffect(()=>{if(!initialized.current)return;const t=setTimeout(()=>syncCollection("purchase_orders",pos,"pos"),800);return()=>clearTimeout(t);},[pos]);
   useEffect(()=>{if(!initialized.current)return;const t=setTimeout(()=>syncCollection("users",users,"users"),800);return()=>clearTimeout(t);},[users]);
+  useEffect(()=>{if(!initialized.current)return;const t=setTimeout(()=>syncCollection("quotes",quotes,"quotes"),800);return()=>clearTimeout(t);},[quotes]);
   useEffect(()=>{
     if(!initialized.current)return;
     const t=setTimeout(()=>db.saveSetting("main_settings",settings).catch(e=>console.error("[DB] Settings:",e)),800);
@@ -1727,7 +1722,7 @@ export default function App(){
           {active==="dashboard"  && <Dashboard inventory={inventory} customers={customers} sales={sales} expenses={expenses} deliveries={deliveries}/>}
           {active==="pos"        && canEdit && <POS inventory={inventory} setInventory={setInventory} customers={customers} sales={sales} setSales={setSales} {...cp}/>}
           {active==="orders"     && <Orders sales={sales} setSales={setSales} customers={customers} settings={settings} canEdit={canEdit} {...cp}/>}
-          {active==="quotations" && canEdit && <Quotations inventory={inventory} customers={customers} setSales={setSales} setInventory={setInventory} settings={settings} {...cp}/>}
+          {active==="quotations" && canEdit && <Quotations inventory={inventory} customers={customers} quotes={quotes} setQuotes={setQuotes} setSales={setSales} setInventory={setInventory} settings={settings} {...cp}/>}
           {active==="inventory"  && canEdit && <Inventory inventory={inventory} setInventory={setInventory} {...cp}/>}
           {active==="purchase"   && user.role==="admin" && <PurchaseOrders pos={pos} setPOs={setPOs} inventory={inventory} setInventory={setInventory} suppliers={suppliers} {...cp}/>}
           {active==="crm"        && canEdit && <CRM customers={customers} setCustomers={setCustomers} sales={sales} {...cp}/>}
