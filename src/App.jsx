@@ -582,7 +582,7 @@ function Orders({sales,setSales,customers,settings,currentUser,addAudit,canEdit}
                 <Sel value={order.status} onChange={e=>upSt(order.id,e.target.value)} style={{fontSize:10,padding:"4px 6px",flex:1}}>{ORDER_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel>
                 <Btn onClick={()=>setPay(order)} variant="success" style={{fontSize:10,padding:"4px 8px"}}>💳 Pay</Btn>
                 <Btn onClick={()=>printDoc(order,customers,settings)} variant="purple" style={{fontSize:10,padding:"4px 8px"}}>🖨</Btn>
-                <Btn onClick={()=>del(order.id)} variant="danger" style={{fontSize:10,padding:"4px 8px"}}>✕</Btn>
+                {currentUser.role==="admin"&&<Btn onClick={()=>del(order.id)} variant="danger" style={{fontSize:10,padding:"4px 8px"}}>✕</Btn>}
               </div>}
             </Card>
           );})}
@@ -617,7 +617,7 @@ function Orders({sales,setSales,customers,settings,currentUser,addAudit,canEdit}
                     {canEdit&&<Tip label="Edit Order"><Btn onClick={()=>startEdit(order)} variant="ghost" style={{fontSize:10,padding:"3px 7px"}}>✎</Btn></Tip>}
                     <Tip label="Print Invoice"><Btn onClick={()=>printDoc(order,customers,settings)} variant="purple" style={{fontSize:10,padding:"3px 7px"}}>🖨</Btn></Tip>
                     <Tip label="Packing Slip"><Btn onClick={()=>printPackingSlip(order)} variant="teal" style={{fontSize:10,padding:"3px 7px"}}>📋</Btn></Tip>
-                    {canEdit&&<Tip label="Delete"><Btn onClick={()=>del(order.id)} variant="danger" style={{fontSize:10,padding:"3px 7px"}}>✕</Btn></Tip>}
+                    {currentUser.role==="admin"&&<Tip label="Delete"><Btn onClick={()=>del(order.id)} variant="danger" style={{fontSize:10,padding:"3px 7px"}}>✕</Btn></Tip>}
                   </div></Td>
                 </tr>
                 {exp===order.id&&(
@@ -648,6 +648,7 @@ function Quotations({inventory,customers,setSales,setInventory,settings,currentU
   const [add,setAdd]=useState(false);const [form,setForm]=useState({customerId:"",validUntil:"",note:""});const [cq,setCq]=useState([]);
   const addItem=item=>setCq(c=>{const ex=c.find(x=>x.sku===item.sku);if(ex)return c.map(x=>x.sku===item.sku?{...x,qty:x.qty+1}:x);return[...c,{...item,qty:1}];});
   const save=()=>{const cust=customers.find(c=>c.id===parseInt(form.customerId));if(!cust||!cq.length)return;const tot=cq.reduce((a,c)=>a+c.qty*c.price,0);const q={id:`QT-${String(quotes.length+1).padStart(3,"0")}`,date:today(),customer:cust.name,customerId:cust.id,items:cq.map(c=>({sku:c.sku,name:c.name,qty:c.qty,price:c.price})),total:tot,status:"Draft",validUntil:form.validUntil,note:form.note};setQuotes(qs=>[q,...qs]);addAudit("create","Quotation",`${q.id} for ${cust.name}`,currentUser.name);setAdd(false);setCq([]);setForm({customerId:"",validUntil:"",note:""});};
+  const delQuote=q=>{if(!window.confirm(`Delete ${q.id}?`))return;setQuotes(qs=>qs.filter(x=>x.id!==q.id));addAudit("delete","Quotation",q.id,currentUser.name);};
   const convert=q=>{if(!window.confirm("Convert to order?"))return;const order={id:uid(),date:today(),customer:q.customer,customerId:q.customerId,items:q.items,total:q.total,status:"Invoiced",payments:[],note:`From ${q.id}`};setSales(s=>[order,...s]);setInventory(inv=>inv.map(i=>{const ci=q.items.find(x=>x.sku===i.sku);return ci?{...i,qty:i.qty-ci.qty}:i;}));setQuotes(qs=>qs.map(x=>x.id===q.id?{...x,status:"Converted"}:x));addAudit("create","Order",`From ${q.id}`,currentUser.name);};
   const doExport=()=>exportToExcel(quotes.map(q=>({ID:q.id,Date:q.date,Customer:q.customer,Total:q.total,Status:q.status,ValidUntil:q.validUntil||"",Note:q.note||""})),"natrio_quotes.xlsx");
   return(
@@ -680,6 +681,7 @@ function Quotations({inventory,customers,setSales,setInventory,settings,currentU
               <div style={{display:"flex",gap:5}}>
                 {q.status!=="Converted"&&<Btn onClick={()=>convert(q)} variant="success" style={{fontSize:10,padding:"4px 8px",flex:1}}>→ Order</Btn>}
                 <Btn onClick={()=>printDoc(q,customers,settings,true)} variant="ghost" style={{fontSize:10,padding:"4px 8px"}}>🖨 Print</Btn>
+                {currentUser.role==="admin"&&<Btn onClick={()=>delQuote(q)} variant="danger" style={{fontSize:10,padding:"4px 8px"}}>✕</Btn>}
               </div>
             </Card>
           ))}
@@ -696,6 +698,7 @@ function Quotations({inventory,customers,setSales,setInventory,settings,currentU
               <Td><div style={{display:"flex",gap:5}}>
                 {q.status!=="Converted"&&<Btn onClick={()=>convert(q)} variant="success" style={{fontSize:10,padding:"3px 7px"}}>→ Order</Btn>}
                 <Btn onClick={()=>printDoc(q,customers,settings,true)} variant="ghost" style={{fontSize:10,padding:"3px 7px"}}>🖨 Print</Btn>
+                {currentUser.role==="admin"&&<Tip label="Delete"><Btn onClick={()=>delQuote(q)} variant="danger" style={{fontSize:10,padding:"3px 7px"}}>✕</Btn></Tip>}
               </div></Td>
             </tr>
           ))}</tbody>
@@ -758,7 +761,7 @@ function Inventory({inventory,setInventory,currentUser,addAudit}){
                   <div><div style={{fontSize:9,color:C.muted}}>Price</div><div style={{fontSize:13,fontFamily:"'DM Mono',monospace"}}>{fmt(item.price)}</div></div>
                   <div><div style={{fontSize:9,color:C.muted}}>Margin</div><div style={{fontSize:13,color:C.green,fontFamily:"'DM Mono',monospace"}}>{item.price?Math.round(((item.price-item.cost)/item.price)*100):0}%</div></div>
                 </div>
-                <div style={{display:"flex",gap:5}}><Btn onClick={()=>startEdit(item)} variant="ghost" style={{fontSize:10,padding:"4px 8px",flex:1}}>✎ Edit</Btn><Btn onClick={()=>setAdj(item)} variant="teal" style={{fontSize:10,padding:"4px 8px",flex:1}}>Adjust</Btn><Btn onClick={()=>{if(window.confirm(`Delete "${item.name}"?`)){setInventory(inv=>inv.filter(i=>i.id!==item.id));addAudit("delete","Inventory",item.name,currentUser.name);}}} variant="danger" style={{fontSize:10,padding:"4px 8px"}}>✕</Btn></div>
+                <div style={{display:"flex",gap:5}}><Btn onClick={()=>startEdit(item)} variant="ghost" style={{fontSize:10,padding:"4px 8px",flex:1}}>✎ Edit</Btn><Btn onClick={()=>setAdj(item)} variant="teal" style={{fontSize:10,padding:"4px 8px",flex:1}}>Adjust</Btn>{currentUser.role==="admin"&&<Btn onClick={()=>{if(window.confirm(`Delete "${item.name}"?`)){setInventory(inv=>inv.filter(i=>i.id!==item.id));addAudit("delete","Inventory",item.name,currentUser.name);}}} variant="danger" style={{fontSize:10,padding:"4px 8px"}}>✕</Btn>}</div>
                 </>
               )}
             </Card>
@@ -785,7 +788,7 @@ function Inventory({inventory,setInventory,currentUser,addAudit}){
                 <Td><div style={{display:"flex",gap:3}}>
                   <Tip label="Edit"><Btn onClick={()=>startEdit(item)} variant="ghost" style={{fontSize:10,padding:"3px 6px"}}>✎</Btn></Tip>
                   <Tip label="Adjust Stock"><Btn onClick={()=>setAdj(item)} variant="teal" style={{fontSize:10,padding:"3px 6px"}}>±</Btn></Tip>
-                  <Tip label="Delete"><Btn onClick={()=>{if(window.confirm(`Delete "${item.name}"?`)){setInventory(inv=>inv.filter(i=>i.id!==item.id));addAudit("delete","Inventory",item.name,currentUser.name);}}} variant="danger" style={{fontSize:10,padding:"3px 6px"}}>✕</Btn></Tip>
+                  {currentUser.role==="admin"&&<Tip label="Delete"><Btn onClick={()=>{if(window.confirm(`Delete "${item.name}"?`)){setInventory(inv=>inv.filter(i=>i.id!==item.id));addAudit("delete","Inventory",item.name,currentUser.name);}}} variant="danger" style={{fontSize:10,padding:"3px 6px"}}>✕</Btn></Tip>}
                 </div></Td>
                 </>)}
               </tr>
@@ -829,7 +832,7 @@ function PurchaseOrders({pos,setPOs,inventory,setInventory,suppliers,currentUser
             <Td><Badge label={po.status}/></Td>
             <Td><div style={{display:"flex",gap:4}}>
               {po.status==="Pending"&&<Btn onClick={()=>recv(po)} variant="success" style={{fontSize:10,padding:"3px 7px"}}>✓ Received</Btn>}
-              <Tip label="Delete PO"><Btn onClick={()=>delPO(po)} variant="danger" style={{fontSize:10,padding:"3px 7px"}}>✕</Btn></Tip>
+              {currentUser.role==="admin"&&<Tip label="Delete PO"><Btn onClick={()=>delPO(po)} variant="danger" style={{fontSize:10,padding:"3px 7px"}}>✕</Btn></Tip>}
             </div></Td>
           </tr>
         ))}</tbody>
@@ -932,7 +935,7 @@ function CRM({customers,setCustomers,sales,currentUser,addAudit}){
         :<>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
             <div><div style={{fontSize:17,fontWeight:800}}>{cust.name}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>Since {cust.since}</div></div>
-            <div style={{display:"flex",gap:6}}><Badge label={cust.tier}/><Btn onClick={()=>del(cust.id)} variant="danger" style={{fontSize:10,padding:"3px 9px"}}>Delete</Btn></div>
+            <div style={{display:"flex",gap:6}}><Badge label={cust.tier}/>{currentUser.role==="admin"&&<Btn onClick={()=>del(cust.id)} variant="danger" style={{fontSize:10,padding:"3px 9px"}}>Delete</Btn>}</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:12}}>
             <StatCard label="Revenue" value={fmt(cs.reduce((a,s)=>a+s.total,0))} color={C.green}/>
@@ -1032,7 +1035,7 @@ function DeliveryTracker({deliveries,setDeliveries,sales,currentUser,addAudit}){
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <Sel value={d.status} onChange={e=>upd(d.id,e.target.value)} style={{fontSize:11,padding:"4px 7px",flex:1}}>{DEL_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel>
                   <Btn onClick={()=>startEdit(d)} variant="ghost" style={{fontSize:10,padding:"4px 8px"}}>✎ Edit</Btn>
-                  <Btn onClick={()=>delDel(d)} variant="danger" style={{fontSize:10,padding:"4px 8px"}}>✕</Btn>
+                  {currentUser.role==="admin"&&<Btn onClick={()=>delDel(d)} variant="danger" style={{fontSize:10,padding:"4px 8px"}}>✕</Btn>}
                 </div>
                 </>
               )}
@@ -1056,7 +1059,7 @@ function DeliveryTracker({deliveries,setDeliveries,sales,currentUser,addAudit}){
                 <Td><div style={{display:"flex",gap:4}}>
                   <Sel value={d.status} onChange={e=>upd(d.id,e.target.value)} style={{fontSize:10,padding:"3px 5px",width:"auto"}}>{DEL_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel>
                   <Tip label="Edit"><Btn onClick={()=>startEdit(d)} variant="ghost" style={{fontSize:10,padding:"3px 6px"}}>✎</Btn></Tip>
-                  <Tip label="Delete"><Btn onClick={()=>delDel(d)} variant="danger" style={{fontSize:10,padding:"3px 6px"}}>✕</Btn></Tip>
+                  {currentUser.role==="admin"&&<Tip label="Delete"><Btn onClick={()=>delDel(d)} variant="danger" style={{fontSize:10,padding:"3px 6px"}}>✕</Btn></Tip>}
                 </div></Td>
                 </>
               )}
@@ -1124,7 +1127,7 @@ function Expenses({expenses,setExpenses,currentUser,addAudit}){
                     <div><div style={{fontSize:12,fontWeight:700}}>{e.description}</div><div style={{fontSize:10,color:C.muted,marginTop:2}}>{e.date}</div><div style={{marginTop:4}}><Badge label={e.category}/></div></div>
                     <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
                       <div style={{fontSize:14,fontWeight:800,color:C.red,fontFamily:"'DM Mono',monospace"}}>{fmt(e.amount)}</div>
-                      <Btn onClick={()=>del(e.id)} variant="danger" style={{fontSize:10,padding:"3px 7px"}}>✕</Btn>
+                      {currentUser.role==="admin"&&<Btn onClick={()=>del(e.id)} variant="danger" style={{fontSize:10,padding:"3px 7px"}}>✕</Btn>}
                     </div>
                   </div>
                 </Card>
@@ -1138,7 +1141,7 @@ function Expenses({expenses,setExpenses,currentUser,addAudit}){
                   <Td style={{color:C.muted}}>{e.date}</Td><Td><Badge label={e.category}/></Td>
                   <Td>{e.description}</Td>
                   <Td style={{fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.red}}>{fmt(e.amount)}</Td>
-                  <Td><Btn onClick={()=>del(e.id)} variant="danger" style={{fontSize:10,padding:"2px 6px"}}>✕</Btn></Td>
+                  <Td>{currentUser.role==="admin"&&<Btn onClick={()=>del(e.id)} variant="danger" style={{fontSize:10,padding:"2px 6px"}}>✕</Btn>}</Td>
                 </tr>
               ))}</tbody>
             </table></Card>
