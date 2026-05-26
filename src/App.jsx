@@ -62,59 +62,6 @@ function importFromExcel(file, cb) {
   reader.readAsBinaryString(file);
 }
 
-/* ── Seed data ── */
-const seedInventory = [
-  {id:1,sku:"WHL-001",name:"Industrial Bearing Set",category:"Mechanical",qty:340,reorder:50,cost:3500,price:7800,supplier:"MetroSupply Co.",barcode:"8901234567890"},
-  {id:2,sku:"WHL-002",name:"Hydraulic Fluid 5L",category:"Fluids",qty:12,reorder:30,cost:5000,price:11700,supplier:"FluidTech Inc.",barcode:"8901234567891"},
-  {id:3,sku:"WHL-003",name:"Steel Bolt Pack (100)",category:"Fasteners",qty:890,reorder:200,cost:1170,price:3060,supplier:"BoltMaster",barcode:"8901234567892"},
-  {id:4,sku:"WHL-004",name:"Conveyor Belt 10m",category:"Mechanical",qty:8,reorder:5,cost:61200,price:133500,supplier:"MetroSupply Co.",barcode:"8901234567893"},
-  {id:5,sku:"WHL-005",name:"Safety Gloves L/XL",category:"PPE",qty:150,reorder:100,cost:975,price:2500,supplier:"SafeGear Ltd.",barcode:"8901234567894"},
-  {id:6,sku:"WHL-006",name:'PVC Pipe 2" x 6m',category:"Plumbing",qty:44,reorder:20,cost:3900,price:9450,supplier:"PipePro",barcode:"8901234567895"},
-];
-const seedCustomers = [
-  {id:1,name:"Acme Industries",email:"orders@acme.com",phone:"+92 300-1234567",credit:13900000,balance:3450000,tier:"Gold",since:"2019-03-12",orders:84,address:"Plot 12, Industrial Zone, Karachi"},
-  {id:2,name:"BuildRight Corp",email:"purchasing@buildright.com",phone:"+92 321-2345678",credit:6950000,balance:890000,tier:"Silver",since:"2021-07-08",orders:31,address:"Office 5, Blue Area, Islamabad"},
-  {id:3,name:"FabTech Ltd",email:"supply@fabtech.com",phone:"+92 333-3456789",credit:22250000,balance:8300000,tier:"Platinum",since:"2017-11-20",orders:162,address:"Sector G-10, Rawalpindi"},
-  {id:4,name:"QuickBuild LLC",email:"ops@quickbuild.com",phone:"+92 345-4567890",credit:2780000,balance:0,tier:"Bronze",since:"2023-01-15",orders:7,address:"Model Town, Lahore"},
-];
-const seedSales = [
-  {id:1001,date:"2026-05-20",customer:"Acme Industries",customerId:1,items:[{sku:"WHL-001",name:"Industrial Bearing Set",qty:20,price:7800},{sku:"WHL-003",name:"Steel Bolt Pack (100)",qty:5,price:3060}],total:171300,status:"Paid",payments:[{amount:171300,date:"2026-05-21",method:"Bank Transfer",note:""}]},
-  {id:1002,date:"2026-05-21",customer:"FabTech Ltd",customerId:3,items:[{sku:"WHL-004",name:"Conveyor Belt 10m",qty:2,price:133500}],total:267000,status:"Invoiced",payments:[]},
-  {id:1003,date:"2026-04-22",customer:"BuildRight Corp",customerId:2,items:[{sku:"WHL-005",name:"Safety Gloves L/XL",qty:30,price:2500},{sku:"WHL-006",name:'PVC Pipe 2" x 6m',qty:10,price:9450}],total:169500,status:"Delivered",payments:[{amount:169500,date:"2026-04-22",method:"Cash",note:""}]},
-  {id:1004,date:"2026-03-23",customer:"QuickBuild LLC",customerId:4,items:[{sku:"WHL-002",name:"Hydraulic Fluid 5L",qty:3,price:11700}],total:35100,status:"Due",payments:[]},
-  {id:1005,date:"2026-02-15",customer:"Acme Industries",customerId:1,items:[{sku:"WHL-005",name:"Safety Gloves L/XL",qty:50,price:2500}],total:125000,status:"Paid",payments:[{amount:125000,date:"2026-02-16",method:"Bank Transfer",note:""}]},
-  {id:1006,date:"2026-01-10",customer:"FabTech Ltd",customerId:3,items:[{sku:"WHL-001",name:"Industrial Bearing Set",qty:100,price:7800}],total:780000,status:"Paid",payments:[{amount:780000,date:"2026-01-12",method:"Bank Transfer",note:""}]},
-];
-const seedSuppliers = [
-  {id:1,name:"MetroSupply Co.",contact:"Ali Hassan",phone:"+92 300-9999001",email:"ali@metro.com",address:"Karachi Industrial Zone"},
-  {id:2,name:"FluidTech Inc.",contact:"Sara Khan",phone:"+92 321-9999002",email:"sara@fluid.com",address:"Lahore Technology Park"},
-  {id:3,name:"BoltMaster",contact:"Usman Raza",phone:"+92 333-9999003",email:"bolt@master.com",address:"Faisalabad"},
-  {id:4,name:"SafeGear Ltd.",contact:"Nadia Ahmed",phone:"+92 345-9999004",email:"info@safegear.pk",address:"Islamabad"},
-  {id:5,name:"PipePro",contact:"Tariq Mehmood",phone:"+92 312-9999005",email:"t@pipepro.pk",address:"Rawalpindi"},
-];
-const seedPOs = [
-  {id:"PO-001",date:"2026-05-18",supplierId:1,supplierName:"MetroSupply Co.",items:[{sku:"WHL-001",name:"Industrial Bearing Set",qty:100,cost:3500}],total:350000,status:"Received"},
-  {id:"PO-002",date:"2026-05-22",supplierId:2,supplierName:"FluidTech Inc.",items:[{sku:"WHL-002",name:"Hydraulic Fluid 5L",qty:50,cost:5000}],total:250000,status:"Pending"},
-];
-const seedExpenses = [
-  {id:1,date:"2026-05-01",category:"Rent",description:"Warehouse rent - May",amount:85000},
-  {id:2,date:"2026-05-05",category:"Utilities",description:"Electricity bill",amount:12400},
-  {id:3,date:"2026-04-10",category:"Transport",description:"Delivery fuel",amount:8500},
-  {id:4,date:"2026-04-15",category:"Salaries",description:"Staff wages",amount:180000},
-  {id:5,date:"2026-03-01",category:"Rent",description:"Warehouse rent - March",amount:85000},
-  {id:6,date:"2026-03-20",category:"Marketing",description:"Social media ads",amount:25000},
-  {id:7,date:"2026-02-15",category:"Salaries",description:"Staff wages",amount:175000},
-  {id:8,date:"2026-01-01",category:"Rent",description:"Warehouse rent - Jan",amount:80000},
-];
-const seedDeliveries = [
-  {id:"DEL-001",orderId:1002,customer:"FabTech Ltd",driver:"Imran Khan",vehicle:"ABC-1234",date:"2026-05-24",status:"En Route",notes:"Call before delivery",area:"Rawalpindi"},
-  {id:"DEL-002",orderId:1003,customer:"BuildRight Corp",driver:"Sajid Ali",vehicle:"XYZ-5678",date:"2026-04-22",status:"Delivered",notes:"",area:"Islamabad"},
-];
-const seedUsers = [
-  {id:1,name:"Admin User",username:"admin",password:"admin123",role:"admin"},
-  {id:2,name:"Sales Rep",username:"sales",password:"sales123",role:"sales"},
-  {id:3,name:"View Only",username:"viewer",password:"viewer123",role:"viewer"},
-];
 const DEFAULT_SETTINGS = {
   companyName:"Natrio Organics",tagline:"Distribution Suite",
   address1:"",address2:"",city:"",country:"Pakistan",
